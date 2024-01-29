@@ -112,5 +112,10 @@ class OMOPIDTracker():
         nid = self.next_id
         self.next_id += 1
         return nid
-
+        
+def get_table_row_count(schema_name, table_name, engine):
+    query = text(f"SELECT COUNT(*) FROM {schema_name}.{table_name}")
+    df_temp = pd.read_sql(query, engine)      
+    return df_temp.iloc[0, 0]   
+    
 

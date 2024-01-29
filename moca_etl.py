@@ -19,6 +19,7 @@ from omop_etl_utils import create_empty_observation_record
 from omop_etl_utils import moca_string_to_date, moca_string_to_datetime, moca_string_to_time
 from omop_etl_utils import STANDARD_ALGORITHM_OMOP_CONCEPT_ID, EQUALS_OMOP_CONCEPT_ID
 from omop_etl_utils import OMOPIDTracker
+from omop_etl_utils import get_table_row_count
 
 # configurable parameter imports
 import moca_etl_parameters
@@ -252,14 +253,20 @@ def process_moca_etl():
         
     # write measurement records to table as append...
     df_new_measurements = pd.DataFrame([dict(m) for m in moca_measurements])    
-    n_wrote = df_new_measurements.to_sql(POSTGRES_MOCA_WRITE_MEASUREMENT_TABLE_NAME, schema=POSTGRES_MOCA_WRITE_SCHEMA_NAME, 
+    # pd.to_sql does not return the total number of rows written,
+    # so we have to compute this for ourselves...
+    n_before = get_table_row_count(POSTGRES_MOCA_WRITE_SCHEMA_NAME, POSTGRES_MOCA_WRITE_MEASUREMENT_TABLE_NAME, engine)    
+    ignore = df_new_measurements.to_sql(POSTGRES_MOCA_WRITE_MEASUREMENT_TABLE_NAME, schema=POSTGRES_MOCA_WRITE_SCHEMA_NAME, 
                            if_exists='append', index=False, con=engine)    
+    n_wrote = get_table_row_count(POSTGRES_MOCA_WRITE_SCHEMA_NAME, POSTGRES_MOCA_WRITE_MEASUREMENT_TABLE_NAME, engine) - n_before        
     sys.stderr.write(f"Appended {n_wrote} MEASUREMENT records to table '{POSTGRES_MOCA_WRITE_SCHEMA_NAME}.{POSTGRES_MOCA_WRITE_MEASUREMENT_TABLE_NAME}'.\n")
     
     # write observation records to table as append...
+    n_before = get_table_row_count(POSTGRES_MOCA_WRITE_SCHEMA_NAME, POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME, engine)    
     df_new_observations = pd.DataFrame([dict(o) for o in moca_observations])    
-    n_wrote = df_new_observations.to_sql(POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME, schema=POSTGRES_MOCA_WRITE_SCHEMA_NAME,  
+    ignore = df_new_observations.to_sql(POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME, schema=POSTGRES_MOCA_WRITE_SCHEMA_NAME,  
                            if_exists='append', index=False, con=engine)
+    n_wrote = get_table_row_count(POSTGRES_MOCA_WRITE_SCHEMA_NAME, POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME, engine) - n_before        
     sys.stderr.write(f"Appended {n_wrote} OBSERVATION records to table '{POSTGRES_MOCA_WRITE_SCHEMA_NAME}.{POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME}'.\n")
     
     # close database connection

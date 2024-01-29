@@ -18,5 +18,5 @@ LABS_NT_PROBNP_RANGES_SHEETNAME = 'NT-proBNP Ranges'
 LABS_ALKALINE_PHOSPHATASE_RANGES_SHEETNAME = 'Alkaline Phosphatase Ranges'
 
 # glob wildcard path to the raw MOCA source data files
-LABS_SOURCE_DATA_GLOB = './LABS/EXAMPLE_DATA/*_NORC*.xlsx'
+LABS_SOURCE_DATA_GLOB = './LABS/EXAMPLE_DATA/LAB-NORC-2024*.xlsx'
 
