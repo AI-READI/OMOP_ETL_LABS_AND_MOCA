@@ -10,7 +10,14 @@ POSTGRES_MOCA_WRITE_MEASUREMENT_TABLE_NAME='measurement_test'
 POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME='observation_test'
 
 #path to the standard mapping csv file
-STANDARDS_MAPPING_CSV_PATH='./STANDARDS_MAPPINGS/0100_2023-12-01_MOCA_Data_Dictionary_Mappings.csv'
+STANDARDS_MAPPING_CSV_PATH='./MOCA/STANDARDS_MAPPINGS/0100_2023-12-01_MOCA_Data_Dictionary_Mappings.csv'
 
 # glob wildcard path to the raw MOCA source data files
-MOCA_SOURCE_DATA_GLOB = '../EXAMPLE_DATA/MoCA/MOCA-*.csv'
+MOCA_SOURCE_DATA_GLOB = './MOCA/EXAMPLE_DATA/MOCA-*.csv'
+
+# control writing to the OMOP database, for debugging
+MOCA_OMOP_WRITE_TO_DATABASE = True
+
+
+
+

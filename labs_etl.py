@@ -31,6 +31,8 @@ from labs_etl_parameters import POSTGRES_LABS_READ_OBSERVATION_TABLE_NAME
 from labs_etl_parameters import POSTGRES_LABS_WRITE_SCHEMA_NAME
 from labs_etl_parameters import POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME
 
+from labs_etl_parameters import LABS_OMOP_WRITE_TO_DATABASE
+
 # omop etl utilities
 from omop_etl_utils import create_empty_measurement_record
 from omop_etl_utils import EQUALS_OMOP_CONCEPT_ID, LESS_THAN_OMOP_CONCEPT_ID
@@ -325,14 +327,18 @@ def process_labs_etl():
         bad_record_count += bad
     sys.stderr.write(f"Found {len(labs_measurements)} valid records and rejected {bad_record_count} invalid records.\n")
 
-    # write measurement records to OMOP database as append...
-    n_before = get_table_row_count(POSTGRES_LABS_WRITE_SCHEMA_NAME, POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME, engine)    
-    df_new_measurements = pd.DataFrame([dict(m) for m in labs_measurements])        
-    ignore = df_new_measurements.to_sql(POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME, schema=POSTGRES_LABS_WRITE_SCHEMA_NAME, 
-                                            if_exists='append', index=False, con=engine)
-    n_wrote = get_table_row_count(POSTGRES_LABS_WRITE_SCHEMA_NAME, POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME, engine) - n_before        
-    sys.stderr.write(f"Appended {n_wrote} MEASUREMENT records to table '{POSTGRES_LABS_WRITE_SCHEMA_NAME}.{POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME}'.\n")
-    
+    if LABS_OMOP_WRITE_TO_DATABASE:
+        # write measurement records to OMOP database as append...
+        n_before = get_table_row_count(POSTGRES_LABS_WRITE_SCHEMA_NAME, POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME, engine)    
+        df_new_measurements = pd.DataFrame([dict(m) for m in labs_measurements])        
+        ignore = df_new_measurements.to_sql(POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME, schema=POSTGRES_LABS_WRITE_SCHEMA_NAME, 
+                                                if_exists='append', index=False, con=engine)
+        n_wrote = get_table_row_count(POSTGRES_LABS_WRITE_SCHEMA_NAME, POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME, engine) - n_before        
+        sys.stderr.write(f"Appended {n_wrote} MEASUREMENT records to table '{POSTGRES_LABS_WRITE_SCHEMA_NAME}.{POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME}'.\n")
+    else:
+        sys.stderr.write("*** Skipping writing records to database.***\n")
+        sys.stderr.write("Set configuration option LABS_OMOP_WRITE_TO_DATABASE to True to enable write.\n")
+        
     # close database connection
     connection.close()
 

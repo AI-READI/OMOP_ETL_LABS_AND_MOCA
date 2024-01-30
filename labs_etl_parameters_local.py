@@ -20,3 +20,8 @@ LABS_ALKALINE_PHOSPHATASE_RANGES_SHEETNAME = 'Alkaline Phosphatase Ranges'
 # glob wildcard path to the raw MOCA source data files
 LABS_SOURCE_DATA_GLOB = './LABS/EXAMPLE_DATA/LAB-NORC-2024*.xlsx'
 
+# control writing to the OMOP database, for debugging
+LABS_OMOP_WRITE_TO_DATABASE = True
+
+
+

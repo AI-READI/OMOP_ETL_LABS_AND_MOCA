@@ -14,6 +14,12 @@ EQUALS_OMOP_CONCEPT_ID = 4172703
 LESS_THAN_OMOP_CONCEPT_ID = 4171756
 
 # helpful classes
+
+# dotdict() should be part of the standard library, but it is not.
+# similar classes in the standard library, such as the namedtuple in the collections package
+# are not drop in replacements and are not as convenient,
+# this makes a lot of the ETL record code cleaner and simpler, so we just define it here,
+# since it is so short and simple.
 class dotdict(dict):
     """dot.notation access to dictionary attributes"""
     __getattr__ = dict.get

@@ -14,3 +14,10 @@ STANDARDS_MAPPING_CSV_PATH='./MOCA/STANDARDS_MAPPINGS/0100_2023-12-01_MOCA_Data_
 
 # glob wildcard path to the raw MOCA source data files
 MOCA_SOURCE_DATA_GLOB = './MOCA/EXAMPLE_DATA/MOCA-*.csv'
+
+# control writing to the OMOP database, for debugging
+MOCA_OMOP_WRITE_TO_DATABASE = True
+
+
+
+
