@@ -18,4 +18,6 @@ The MoCA and Labs ETL process adds to the database created by the RedCap-to-OMOP
 1. Set the configuration variables in labs_etal_parameters.py appropriately for the configuration of the system. In particular, the local of the source data files, as well as the destination OMOP database connection, schema, and table names will need to be set. See labs_etal_parameters_local.py and labs_etal_parameters_azure.py for example configurations.
 2. Run the ETL script: % python labs_main.py
 
-
+# This project also contains the master.sh shell script.
+master.sh is intended to be a single script to fire off the entire sequence of OMOP database processing.
+This script is a work in progress.
