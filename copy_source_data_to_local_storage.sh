@@ -9,6 +9,7 @@ for FILENAME in $FILES; do
                 echo "Copying:" $FILENAME
                 sudo cp $LAB_SOURCE_PATH/$FILENAME ~/data/labs
         fi
+        sudo chown azureuser:azureuser ~/data/labs/*.xlsx
 done
 
 # copy moca data csv files to local storage
@@ -20,6 +21,9 @@ for FILENAME in $FILES; do
                 echo "Copying:" $FILENAME
                 sudo cp $MOCA_SOURCE_PATH/$FILENAME ~/data/moca
         fi
+        sudo chown azureuser:azureuser ~/data/moca/*.csv
 done
+
+
 
 

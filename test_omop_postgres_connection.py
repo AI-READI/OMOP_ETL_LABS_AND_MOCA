@@ -13,10 +13,13 @@ import labs_etl_parameters
 from labs_etl_parameters import POSTGRES_CONN_STRING_KEY
 from labs_etl_parameters import POSTGRES_OMOP_READ_PERSON_TABLE_NAME
 from labs_etl_parameters import LABS_SOURCE_DATA_GLOB
+from labs_etl_parameters import LABS_STANDARDS_MAPPING_CSV_PATH
+from labs_etl_parameters import LABS_DATA_DICTIONARY_XLSX_PATH
 
 # moca configuration imports
 import moca_etl_parameters
 from moca_etl_parameters import MOCA_SOURCE_DATA_GLOB
+from moca_etl_parameters import STANDARDS_MAPPING_CSV_PATH
 
 # utility imports
 from omop_etl_utils import get_table_row_count
@@ -84,5 +87,30 @@ if __name__ == '__main__':
         sys.stderr.write("OK.\n")       
     sys.stderr.write("Done.\n\n")
 
+    sys.stderr.write(f"Testing reading of LABS standards mappings file in  {LABS_STANDARDS_MAPPING_CSV_PATH}:\n")
+    filename = LABS_STANDARDS_MAPPING_CSV_PATH
+    sys.stderr.write(f"\tReading {filename}...")
+    with open(filename, 'rb') as f:
+        data = f.read()
+    sys.stderr.write("OK.\n")       
+    sys.stderr.write("Done.\n\n")
+
+    sys.stderr.write(f"Testing reading of LABS data dictionary file in  {LABS_DATA_DICTIONARY_XLSX_PATH}:\n")
+    filename = LABS_DATA_DICTIONARY_XLSX_PATH
+    sys.stderr.write(f"\tReading {filename}...")
+    with open(filename, 'rb') as f:
+        data = f.read()
+    sys.stderr.write("OK.\n")       
+    sys.stderr.write("Done.\n\n")
+
+    sys.stderr.write(f"Testing reading of MoCA standards mappings file in  {STANDARDS_MAPPING_CSV_PATH}:\n")
+    filename = STANDARDS_MAPPING_CSV_PATH
+    sys.stderr.write(f"\tReading {filename}...")
+    with open(filename, 'rb') as f:
+        data = f.read()
+    sys.stderr.write("OK.\n")       
+    sys.stderr.write("Done.\n\n")
+
     sys.stderr.write("*** Configuration Testing Completed ***\n")
+
 
