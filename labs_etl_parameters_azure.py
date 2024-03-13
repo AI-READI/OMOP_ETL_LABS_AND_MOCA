@@ -20,7 +20,7 @@ LABS_NT_PROBNP_RANGES_SHEETNAME = 'NT-proBNP Ranges'
 LABS_ALKALINE_PHOSPHATASE_RANGES_SHEETNAME = 'Alkaline Phosphatase Ranges'
 
 # glob wildcard path to the raw LAB source data files
-LABS_SOURCE_DATA_GLOB = '/home/azureuser/data/labs/LAB-NORC-202*.xlsx'
+LABS_SOURCE_DATA_GLOB = '/home/azureuser/data/labs/LAB-NORC-latest.xlsx'
 
 # control writing to the OMOP database, for debugging
 LABS_OMOP_WRITE_TO_DATABASE = True

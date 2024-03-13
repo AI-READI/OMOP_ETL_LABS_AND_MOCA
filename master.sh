@@ -14,7 +14,8 @@
 # pull latest recap report data to local storage
 python3 /home/azureuser/omop_etl_labs_and_moca/pull_latest_redcap_data.py
 
-# pull latest labs and moca data to local storage
+# pull latest labs and moca data to local storage,
+# copy latest version of each data to file with 'latest' in the name
 bash /home/azureuser/omop_etl_labs_and_moca/copy_source_data_to_local_storage.sh
 
 # run redcap ETL into OMOP
@@ -29,12 +30,16 @@ python3 /home/azureuser/omop_etl_labs_and_moca/labs_main.py
 # generate OMOP csv output files
 python3 '/home/azureuser/omop/python/OMOP Datamart Step5 Azure.py'
 
-# copy OMOP csv files to azure storage
-sudo cp ~/data/output/*.csv /mnt/b2ai_stg_stage-1-container/AI-READI/pooled-data/OMOP
-
 # run DQD analysis and generate json file
+# steve we need a way to transfer the json file to the ETL machine
+# i'm asking Eamon about this, do it manually for now
+# steve, you can use the following scp command on the DQD machine to 
+# copy the dqd json file to the correct place on the ETL machine:
+# RUN THIS ON THE DQD machine once the JSON file is generated
+# scp -i ~/.ssh/omop-etl.pem dqd_aireadi_omop.json azureuser@10.0.0.6:///home/azureuser/data/output
 
-# copy DQD json analysis to azure storage
 
-# copy lastest redcap data files to azure storage
-bash /home/azureuser/omop_etl_labs_and_moca/copy_redcap_reports_to_azure_staging.sh
+# transfer OMOP csv, DQD json, and REDCAP csv files to Azure storage
+bash /home/azureuser/omop_etl_labs_and_moca/send_output_files_to_storage_container.sh
+
+
