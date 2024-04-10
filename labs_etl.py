@@ -42,6 +42,22 @@ from omop_etl_utils import OMOPIDTracker
 from omop_etl_utils import dotdict
 from omop_etl_utils import get_table_row_count
 
+def normalize_lab_test_name(s):
+    # convert to lowercase...
+    s = s.lower()
+    # split at any open parenthesis
+    s = s.split('(')[0]
+    # remove any spaces
+    s = s.replace(' ', '')
+
+    # special cases...
+    # LDL Cholesterol Calculation or LDL Cholesterol (calculated field) convert to LDL Cholesterol 
+    if s.startswith("ldlcholesterol"):
+        s = "ldlcholesterol"
+
+    # return the normalized part
+    return s
+
 def create_standards_completed_lab_mappings():
     MAPPING_COLUMNS_REQUIRED = [
         'Name',
@@ -65,6 +81,12 @@ def create_standards_completed_lab_mappings():
 
     # correct data types...
     df_completed_labs_mappings.TARGET_CONCEPT_ID = df_completed_labs_mappings.TARGET_CONCEPT_ID.astype(int)
+
+    # display mappings
+    sys.stderr.write("Display Completed Mappings")
+    for index, mapping_row in df_completed_labs_mappings.iterrows():
+        sys.stderr.write(f"{index} {str(mapping_row)}\n")
+    sys.stderr.write("\n")
 
     sys.stderr.write("OK.\n")
     
@@ -117,12 +139,18 @@ class NormalRangeLookupTable():
 
     
 def extract_range_from_text(t):
+    t = t.strip()
     if '-' in t:
         parts = t.split('-')
         return (float(parts[0]), float(parts[1]))
+    elif t[0:2] == '<=':
+        return (0.0, float(t[2:]))
+    elif t[0:2] == '>=':
+        return (float(t[2:]), 0.0)
     elif t[0] == '<':
         return (0.0, float(t[1:]))
-
+    elif t[0] == '>':
+        return (float(t[1:]), 0.0)
 
 def compute_superinterval(interval1, interval2):
     low = min(interval1[0], interval2[0])
@@ -205,6 +233,40 @@ def create_measurement(data_row, data_column_name, mapping_row, utilities):
         else:
             # treat not having a reference interval as a fatal error for now
             return None
+    elif mapping_row.Name == 'Troponin-T':
+        # Female: <11; Male <16
+        # handle special case for this lab, we need to take the larger of the Female and Male ranges
+        fpart, mpart = mapping_row['Reference Interval'].split(';')
+        fpart = fpart.split(' ')[-1]
+        mpart = mpart.split(' ')[-1]
+        ignore, fvalue = extract_range_from_text(fpart)
+        ignore, mvalue = extract_range_from_text(mpart)
+        m.range_high = max(fvalue, mvalue)
+        m.range_low = 0.0
+    elif mapping_row.Name == 'ALT (GPT)':
+        # Female: 7-33, Male Age 0-49: 10-64, Male Age 50+: 10-48
+        # handle special case for this lab, we need to take the larger of the Female and Male ranges
+        # complex logic in string, hardcode this here
+        # note that we know the age, but not the sex,
+        reference_interval_F = (7, 33)
+        if age_in_years <= 49:
+            reference_interval_M = (10, 64)
+        else:
+            reference_interval_M = (10, 48)
+        m.range_low, m.range_high = compute_superinterval(reference_interval_F, reference_interval_M)
+    elif mapping_row.Name == 'Creatinine':
+        # Female: 0.38-1.02, Male: 0.51-1.18
+        # handle special case for this lab, we need to take the larger of the Female and Male ranges
+        fpart, mpart = mapping_row['Reference Interval'].split(',')
+        fpart = fpart.split(' ')[-1]
+        mpart = mpart.split(' ')[-1]
+        reference_interval_F = extract_range_from_text(fpart)
+        reference_interval_M = extract_range_from_text(mpart)
+        if reference_interval_F and reference_interval_M:
+            m.range_low, m.range_high = compute_superinterval(reference_interval_F, reference_interval_M)
+        else:
+            # treat not having a reference interval as a fatal error for now
+            return None
     elif ',' in mapping_row['Reference Interval']:
         parts = mapping_row['Reference Interval'].split(',')
         if 'Female:' in parts[0]:
@@ -223,6 +285,8 @@ def create_measurement(data_row, data_column_name, mapping_row, utilities):
             low, ignore = extract_range_from_text(parts[1])        
             m.range_low, m.range_high = low, high
     elif mapping_row['Reference Interval'][0] == '<':
+        m.range_low, m.range_high = extract_range_from_text(mapping_row['Reference Interval'])
+    elif mapping_row['Reference Interval'][0] == '>':
         m.range_low, m.range_high = extract_range_from_text(mapping_row['Reference Interval'])
     elif '-' in mapping_row['Reference Interval']:
         m.range_low, m.range_high = extract_range_from_text(mapping_row['Reference Interval'])        
@@ -249,7 +313,7 @@ def process_lab_sheet_row(r, utilities):
         # to check all the rows.
         # could be optimized by truncating the value names if necessary
         for k in r.keys():
-            if k.startswith(mapping_row.Name):
+            if normalize_lab_test_name(k) == normalize_lab_test_name(mapping_row.Name):
                 # found a matching value, create the measurement
                 m = create_measurement(r, k, mapping_row, utilities)
                 if m:
@@ -338,7 +402,10 @@ def process_labs_etl():
     else:
         sys.stderr.write("*** Skipping writing records to database.***\n")
         sys.stderr.write("Set configuration option LABS_OMOP_WRITE_TO_DATABASE to True to enable write.\n")
-        
+        sys.stderr.write("*** Printing records to stdout for debugging.***\n")
+        for index, row in enumerate(labs_measurements):
+            sys.stdout.write(f"{index} {str(row)}\n")
+
     # close database connection
     connection.close()
 
