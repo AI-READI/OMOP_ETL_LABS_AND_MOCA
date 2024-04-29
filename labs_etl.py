@@ -27,6 +27,8 @@ from labs_etl_parameters import POSTGRES_OMOP_READ_PERSON_TABLE_NAME
 
 from labs_etl_parameters import POSTGRES_LABS_READ_MEASUREMENT_TABLE_NAME
 from labs_etl_parameters import POSTGRES_LABS_READ_OBSERVATION_TABLE_NAME
+from labs_etl_parameters import POSTGRES_LABS_READ_VISIT_OCCURENCE_TABLE_NAME
+from labs_etl_parameters import POSTGRES_LABS_READ_VISIT_OCCURENCE_CONCEPT_ID
 
 from labs_etl_parameters import POSTGRES_LABS_WRITE_SCHEMA_NAME
 from labs_etl_parameters import POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME
@@ -41,6 +43,7 @@ from omop_etl_utils import LAB_OMOP_CONCEPT_ID
 from omop_etl_utils import OMOPIDTracker
 from omop_etl_utils import dotdict
 from omop_etl_utils import get_table_row_count
+from omop_etl_utils import OMOPVisitOccurrenceLookup
 
 def normalize_lab_test_name(s):
     # convert to lowercase...
@@ -299,6 +302,19 @@ def create_measurement(data_row, data_column_name, mapping_row, utilities):
     # a valid new record
     m.measurement_id = utilities.measurementIDTracker.get_next_id()
 
+    # fix up the date of the lab blood draw and insert the visit_occurrence 
+    # if we have one in the lookup table...
+    visitinfo = utilities.pid2visit_mapper.get_earliest_visit_occurrence_id_and_start_date(m.person_id)
+    if visitinfo:
+        visit_id, visit_date = visitinfo
+        m.visit_occurrence_id = visit_id 
+        m.measurement_date = visit_date
+        m.measurement_datetime = datetime.datetime(year=visit_date.year, month=visit_date.month, day=visit_date.day)
+        m.measurement_time = m.measurement_datetime.time()
+    else:
+        sys.stderr.write(f"Unable to find blood draw visit_id for person_id {m.person_id}, using date from labs xlsx file.\n")
+
+
     # return the valid record
     return m
 
@@ -379,7 +395,8 @@ def process_labs_etl():
     utilities.ALKALINE_PHOSPHATASE_NormalRangeLookup = NormalRangeLookupTable(LABS_DATA_DICTIONARY_XLSX_PATH, LABS_ALKALINE_PHOSPHATASE_RANGES_SHEETNAME)
     utilities.NT_PROBNP_NormalRangeLookup = NormalRangeLookupTable(LABS_DATA_DICTIONARY_XLSX_PATH, LABS_NT_PROBNP_RANGES_SHEETNAME)
     utilities.pid2age_mapper = OMOPMapPIDToAgeInYears(engine)
-    
+    utilities.pid2visit_mapper = OMOPVisitOccurrenceLookup(POSTGRES_LABS_READ_VISIT_OCCURENCE_TABLE_NAME, POSTGRES_LABS_READ_VISIT_OCCURENCE_CONCEPT_ID, engine)
+
     # extract data measurement records
     labs_measurements = []
     bad_record_count = 0

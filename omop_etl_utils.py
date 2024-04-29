@@ -125,3 +125,38 @@ def get_table_row_count(schema_name, table_name, engine):
     return df_temp.iloc[0, 0]   
     
 
+class OMOPVisitOccurrenceLookup():
+    def __init__(self, tablename, visit_concept_id, engine):
+        # grab all the visits of the correct type...
+        query = text(f"""SELECT visit_occurrence_id, visit_start_date, person_id 
+                        FROM {tablename}
+                        WHERE visit_concept_id = {visit_concept_id}""")
+        df_temp = pd.read_sql(query, engine)
+
+        # force id types to integers - this may not be needed with the VM DB
+        # but seems to be needed with the development db, 
+        # it should not hurt anything
+        df_temp.visit_occurrence_id = df_temp.visit_occurrence_id.astype(int)
+        #df_temp.person_id = df_temp.person_id.astype(float).astype(int)
+        df_temp.person_id = df_temp.person_id.astype(int)
+
+        # construct a table mapping person_id to the earliest visit_start_date
+        lookup = {}
+        for index, r in df_temp.iterrows():
+            if r.person_id not in lookup:
+                lookup[r.person_id] = (r.visit_occurrence_id, r.visit_start_date)
+            elif r.visit_start_date < lookup[r.person_id][1]:
+                lookup[r.person_id] = (r.visit_occurrence_id, r.visit_start_date)
+        # save mapping from person_id -> (visit_occurrence_id, visit_start_date)
+        self.lookup = lookup
+
+    def get_earliest_visit_occurrence_id_and_start_date(self, person_id):
+        return self.lookup.get(person_id, None)
+
+
+
+
+
+
+
+
