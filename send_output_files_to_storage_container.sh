@@ -17,9 +17,10 @@ azcopy copy "/home/azureuser/data/output/measurement*.csv" "${STAGE1_URI}/${OMOP
 azcopy copy "/home/azureuser/data/output/observation*.csv" "${STAGE1_URI}/${OMOP_PUBLIC_DESTINATION_PATH}${STAGE1_SAS}"
 azcopy copy "/home/azureuser/data/output/person*.csv" "${STAGE1_URI}/${OMOP_PUBLIC_DESTINATION_PATH}${STAGE1_SAS}"
 azcopy copy "/home/azureuser/data/output/procedure_occurrence*.csv" "${STAGE1_URI}/${OMOP_PUBLIC_DESTINATION_PATH}${STAGE1_SAS}"
+azcopy copy "/home/azureuser/data/output/visit_occurrence*.csv" "${STAGE1_URI}/${OMOP_PUBLIC_DESTINATION_PATH}${STAGE1_SAS}"
 
 # send DQD report to Azure storage
-DQD_DESTINATION_PATH="AI-READI/pooled-data/OMOP"
+DQD_DESTINATION_PATH="AI-READI/pooled-data/OMOP/PUBLIC"
 azcopy copy "/home/azureuser/data/output/*.json" "${STAGE1_URI}/${DQD_DESTINATION_PATH}${STAGE1_SAS}"
 
 
