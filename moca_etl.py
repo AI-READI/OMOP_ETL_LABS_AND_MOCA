@@ -12,6 +12,7 @@ import numpy as np
 from sqlalchemy import create_engine, text
 import glob
 import time
+import re
 
 # utility imports
 from omop_etl_utils import create_empty_measurement_record
@@ -57,26 +58,38 @@ class MoCAValidityChecker(object):
     def is_valid_observation(self, o):
         return isinstance(o['person_id'], int) and (o['person_id'] in self.ids) 
 
-    
+# compile regular expression for extraction time from 
+# minutes, seconds string
+MINSEC_REGEX = re.compile(r'(\d+)\s*mins?\s*(\d+)secs?')
+def convert_duration_string_to_seconds(s):
+    mo = MINSEC_REGEX.match(s)
+    return 60*int(mo.group(1)) + int(mo.group(2))
+
 def read_moca_mappings():
     # read the mapping file
     df_mapping = pd.read_csv(STANDARDS_MAPPING_CSV_PATH)    
 
     # load mappings files that are completed and ready for mapping...
     MAPPING_COLUMNS_REQUIRED = [
-        'MOCA File Fieldname',
-        'Data Type',
-        'Value Range',
+        'SRC_CODE',
+        'Data_Type',
+        'Value_Range',
         'TARGET_CONCEPT_ID', 
         'TARGET_CONCEPT_NAME', 
         'TARGET_DOMAIN_ID',
     ]
 
-    df_completed_mappings = df_mapping[lambda df: (df['Map to OMOP?'] == 'Yes') & df.TARGET_CONCEPT_ID.notnull()] \
-        [MAPPING_COLUMNS_REQUIRED]
+    df_completed_mappings = df_mapping[lambda df: (df['Protected_or_open-source'] == 'open-source') & \
+                                                    (df['Map_to_OMOP'] == 'Yes') & \
+                                                    df.TARGET_CONCEPT_ID.notnull()][MAPPING_COLUMNS_REQUIRED]
 
     # correct data types...
     df_completed_mappings.TARGET_CONCEPT_ID = df_completed_mappings.TARGET_CONCEPT_ID.astype(int)
+
+    # output for logging and debugging...
+    sys.stderr.write("Completed valid MOCA OMOP mappings:\n")
+    sys.stderr.write(str(df_completed_mappings.reset_index(drop=True)))
+    sys.stderr.write('\n')
 
     return df_completed_mappings
     
@@ -91,6 +104,10 @@ def load_raw_moca_data():
         else:
             df_moca_data = pd.concat((df_moca_data, df_temp), axis=0)
     
+    # remove any records that are blank, for our purposes, if the Institute File number
+    # is NaN, then the line is blank...
+    df_moca_data = df_moca_data[lambda df: df['Institute File number'].notna()].reset_index(drop=True).copy()
+
     return df_moca_data    
 
 
@@ -113,7 +130,7 @@ def create_single_measurement_record(moca_record, mapping_row):
     m.provider_id = 0
     m.visit_occurrence_id = 0
     m.visit_detail_id = 0
-    m.measurement_source_value = mapping_row['MOCA File Fieldname']
+    m.measurement_source_value = mapping_row['SRC_CODE']
     m.measurement_source_concept_id = 0
     m.unit_source_value = ''
     m.unit_source_concept_id = 0
@@ -121,22 +138,40 @@ def create_single_measurement_record(moca_record, mapping_row):
     m.meas_event_field_concept_id = 0
 
     # set date and time fields...
-    m.measurement_date = moca_string_to_date(moca_record['Test Upload Date'])
-    m.measurement_datetime = moca_string_to_datetime(moca_record['Test Upload Date'])
-    m.measurement_time = moca_string_to_time(moca_record['Test Upload Date'])          
-    
+    m.measurement_date = moca_string_to_date(moca_record['test_upload_date'])
+    m.measurement_datetime = moca_string_to_datetime(moca_record['test_upload_date'])
+    m.measurement_time = moca_string_to_time(moca_record['test_upload_date'])          
+
+    # DEBUGGING
+    #print() 
+    #print(mapping_row)
+    #print(moca_record)
+    #print() 
+
     # set computed value fields...
-    raw_value_text = str(moca_record[mapping_row['MOCA File Fieldname']])
+    raw_value_text = str(moca_record[mapping_row['SRC_CODE']])
     m.value_source_value = raw_value_text
-    if mapping_row['Data Type'] == 'Integer':
+    if mapping_row['Data_Type'] == 'Integer':
         m.value_as_number = float(raw_value_text)
         m.value_as_concept_id = 0
-        value_range = mapping_row['Value Range']
-        if value_range and (value_range.find('-') >= 0):
+        value_range = mapping_row['Value_Range']
+        if pd.isna(value_range):
+            # no range given
+            m.range_low = 0.0
+            m.range_high = 0.0
+        elif value_range and (value_range.find('-') >= 0):
             parts = value_range.split('-')
             m.range_low = float(parts[0])
             m.range_high = float(parts[1])
-            
+        else:
+            # no range given
+            m.range_low = 0.0
+            m.range_high = 0.0
+
+    # DEBUG CODE
+    #print(m)
+    #print()
+
     # return as dotdict
     return m
 
@@ -168,7 +203,7 @@ def create_single_observation_record(moca_record, mapping_row):
     o.provider_id = 0
     o.visit_occurrence_id = 0
     o.visit_detail_id = 0
-    o.observation_source_value = mapping_row['MOCA File Fieldname']
+    o.observation_source_value = mapping_row['SRC_CODE']
     o.observation_source_concept_id = 0
     o.unit_source_value = ''
     o.qualifier_source_value = ''
@@ -176,19 +211,27 @@ def create_single_observation_record(moca_record, mapping_row):
     o.obs_event_field_concept_id = 0
     
     # set date and time fields...
-    o.observation_date = moca_string_to_date(moca_record['Test Upload Date'])
-    o.observation_datetime = moca_string_to_datetime(moca_record['Test Upload Date'])
+    o.observation_date = moca_string_to_date(moca_record['test_upload_date'])
+    o.observation_datetime = moca_string_to_datetime(moca_record['test_upload_date'])
     
     # set computed value fields...
-    raw_value_text = moca_record[mapping_row['MOCA File Fieldname']]
+    raw_value_text = moca_record[mapping_row['SRC_CODE']]
     o.value_source_value = str(raw_value_text)
     o.value_as_string = str(raw_value_text).strip()
     o.value_as_concept_id = 0 # nothing to put in here so far
-    if mapping_row['Data Type'] == 'Integer':
+    if mapping_row['Data_Type'] == 'Integer':
         o.value_as_number = float(raw_value_text)
+    elif mapping_row['Data_Type'] == 'Time Duration':
+        # special handling for moca_total_score_time or any other Time Duration 
+        # data type must convert string MM mins SS secs to value_as_number_seconds
+        o.value_as_number = float(convert_duration_string_to_seconds(raw_value_text))      
     else:
         o.value_as_number = 0.0
-        
+    
+    # DEBUG CODE
+    #print(o)
+    #print()
+
     # return as dotdict
     return o
         
@@ -216,8 +259,10 @@ def process_moca_etl():
     
     # read the raw moca data
     df_moca_data = load_raw_moca_data()
-    sys.stderr.write(f"Read {df_moca_data.shape[0]} raw MoCA records.\n")
-    
+    sys.stderr.write(f"Read {df_moca_data.shape[0]} raw MoCA records:\n")
+    sys.stderr.write(str(df_moca_data))
+    sys.stderr.write('\n')
+
     # process moca data into records...
     # these records do not have the measurement_id and observation_id filled in unti later!
     moca_measurements = []

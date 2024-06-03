@@ -84,15 +84,28 @@ def create_empty_observation_record():
     # needs to be changed back into a dict when using in DataFrame
     return dotdict(dx)
 
-def moca_string_to_date(s):
-    return pd.to_datetime(s, format='%d-%m-%Y').date()
+#
+# MOCA data formats seem to vary
+#
+MOCA_STRING_DATE_FORMATS = ['%d-%m-%Y', '%m/%d/%Y', '%m/%d/%y']
 
 def moca_string_to_datetime(s):
-    return pd.to_datetime(s, format='%d-%m-%Y')    
+    for df in MOCA_STRING_DATE_FORMATS:
+        try:
+            return pd.to_datetime(s, format=df)
+        except:
+            pass
+    return None # can't convert the date format
+
+def moca_string_to_date(s):
+    return moca_string_to_datetime(s).date()
 
 def moca_string_to_time(s):
-    return pd.to_datetime(s, format='%d-%m-%Y').time()
+    return moca_string_to_datetime(s).time()
 
+#
+# these formats should not be changed
+#
 def labs_string_to_date(s):
     return pd.to_datetime(s, format='%m/%d/%Y').date()
 
