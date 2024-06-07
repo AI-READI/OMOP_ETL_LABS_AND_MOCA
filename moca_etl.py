@@ -39,6 +39,15 @@ from moca_etl_parameters import POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME
 
 from moca_etl_parameters import MOCA_OMOP_WRITE_TO_DATABASE
 
+
+#define constants for data collection types
+# these extension values are defined by the AIREADI Standards Team
+MOCA_AUTOMATED_observation_type_concept_id = 999123456
+MOCA_MANUAL_observation_type_concept_id = 999123457
+MOCA_AUTOMATED_measurement_type_concept_id = 998123456
+MOCA_MANUAL_measurement_type_concept_id = 998123456
+
+
 def display_moca_configuration_parameters():
     sys.stderr.write("Configuration Parameters:\n")
     for name, value in vars(moca_etl_parameters).items():
@@ -92,26 +101,47 @@ def read_moca_mappings():
     sys.stderr.write('\n')
 
     return df_completed_mappings
-    
-    
+
+def safe_integer_converstion(s):
+    s = str(s) # ensure we are dealing with a string
+    if s.isnumeric():
+        return s # string is an integer
+    elif s.replace('.', '').isnumeric():
+        return str(int(float(s))) # string is a float, convert to an integer string
+    else:
+        # return string as is, we will catch it later
+        return s
+
 def load_raw_moca_data():
     # load the data files
     df_moca_data = None
-    for filename in glob.glob(MOCA_SOURCE_DATA_GLOB):
-        df_temp = pd.read_csv(filename)
-        if df_moca_data is None:
-            df_moca_data = df_temp
-        else:
-            df_moca_data = pd.concat((df_moca_data, df_temp), axis=0)
+    for filepattern in MOCA_SOURCE_DATA_GLOB.split(';'):
+        for filename in glob.glob(filepattern):
+            df_temp = pd.read_csv(filename)
+            # add source simple filename to the moca data table
+            df_temp['source_filename'] = os.path.split(filename)[1]
+            # accumulate data
+            if df_moca_data is None:
+                df_moca_data = df_temp
+            else:
+                df_moca_data = pd.concat((df_moca_data, df_temp), axis=0)
     
     # remove any records that are blank, for our purposes, if the Institute File number
     # is NaN, then the line is blank...
     df_moca_data = df_moca_data[lambda df: df['Institute File number'].notna()].reset_index(drop=True).copy()
 
+    # clean up Institute File number...
+    df_moca_data['Institute File number'] = df_moca_data['Institute File number'].map(safe_integer_converstion)
+
     return df_moca_data    
 
 
 def create_single_measurement_record(moca_record, mapping_row):
+    # first check to ensure that the column value is not NaN
+    if pd.isna(moca_record[mapping_row['SRC_CODE']]):
+        # don't create a measurement record for this value
+        return None
+
     # create empty new record
     m = create_empty_measurement_record()
     m.measurement_id = 0 # filled in later
@@ -124,7 +154,6 @@ def create_single_measurement_record(moca_record, mapping_row):
     
     # set boilerplate fields    
     m.measurement_concept_id = mapping_row.TARGET_CONCEPT_ID
-    m.measurement_type_concept_id = STANDARD_ALGORITHM_OMOP_CONCEPT_ID
     m.operator_concept_id = EQUALS_OMOP_CONCEPT_ID
     m.unit_concept_id = 0    
     m.provider_id = 0
@@ -136,6 +165,12 @@ def create_single_measurement_record(moca_record, mapping_row):
     m.unit_source_concept_id = 0
     m.measurement_event_id = 0
     m.meas_event_field_concept_id = 0
+
+    # compute measurement_type_concept_id
+    if moca_record.source_filename.lower().find('paper') >= 0:
+        m.measurement_type_concept_id = MOCA_MANUAL_measurement_type_concept_id
+    else:
+        m.measurement_type_concept_id = MOCA_AUTOMATED_measurement_type_concept_id
 
     # set date and time fields...
     m.measurement_date = moca_string_to_date(moca_record['test_upload_date'])
@@ -180,11 +215,18 @@ def create_measurement_records(moca_record, df_mappings):
     moca_measurements = []
     for index, r in df_mappings.iterrows():
         if r.TARGET_DOMAIN_ID == 'Measurement':
-            moca_measurements.append(create_single_measurement_record(moca_record, r))
+            m = create_single_measurement_record(moca_record, r)
+            if m:
+                moca_measurements.append(m)
     return moca_measurements
 
 
 def create_single_observation_record(moca_record, mapping_row):
+    # first check to ensure that the column value is not NaN
+    if pd.isna(moca_record[mapping_row['SRC_CODE']]):
+        # don't create an observation record for this value
+        return None
+
     # create empty new record
     o = create_empty_observation_record()
     o.observation_id = 0 # filled in later
@@ -197,7 +239,6 @@ def create_single_observation_record(moca_record, mapping_row):
         
     # set boilerplate fields
     o.observation_concept_id = mapping_row.TARGET_CONCEPT_ID
-    o.observation_type_concept_id = STANDARD_ALGORITHM_OMOP_CONCEPT_ID
     o.qualifier_concept_id = 0
     o.unit_concept_id = 0  
     o.provider_id = 0
@@ -210,6 +251,12 @@ def create_single_observation_record(moca_record, mapping_row):
     o.observation_event_id = 0
     o.obs_event_field_concept_id = 0
     
+    # compute measurement_type_concept_id
+    if moca_record.source_filename.lower().find('paper') >= 0:
+        o.observation_type_concept_id = MOCA_MANUAL_observation_type_concept_id
+    else:
+        o.observation_type_concept_id = MOCA_AUTOMATED_observation_type_concept_id
+
     # set date and time fields...
     o.observation_date = moca_string_to_date(moca_record['test_upload_date'])
     o.observation_datetime = moca_string_to_datetime(moca_record['test_upload_date'])
@@ -240,7 +287,9 @@ def create_observation_records(moca_record, df_mappings):
     moca_observations = []
     for index, r in df_mappings.iterrows():
         if r.TARGET_DOMAIN_ID == 'Observation':
-            moca_observations.append(create_single_observation_record(moca_record, r))
+            o = create_single_observation_record(moca_record, r)
+            if o:
+                moca_observations.append(o)
     return moca_observations
 
 

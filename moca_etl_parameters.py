@@ -13,10 +13,12 @@ POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME='observation'
 STANDARDS_MAPPING_CSV_PATH='./MOCA/STANDARDS_MAPPINGS/0110_2024_05_22_MOCA_Data_Dictionary_Mappings.csv'
 
 # glob wildcard path to the raw MOCA source data files
-MOCA_SOURCE_DATA_GLOB = './MOCA/EXAMPLE_DATA/MOCA-2024-04-30.csv'
+MOCA_SOURCE_DATA_GLOB = './MOCA/EXAMPLE_DATA/MOCA-latest.csv;./MOCA/EXAMPLE_DATA/MOCA-latest-Paper.csv'
 
 # control writing to the OMOP database, for debugging
 MOCA_OMOP_WRITE_TO_DATABASE = True
+
+
 
 
 

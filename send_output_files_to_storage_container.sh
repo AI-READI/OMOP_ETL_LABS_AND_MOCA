@@ -5,8 +5,8 @@ REDCAP_DESTINATION_PATH="AI-READI/REDCap/"
 azcopy copy "/home/azureuser/data/redcap/*.csv" "${RAW_URI}/${REDCAP_DESTINATION_PATH}${RAW_SAS}"
 
 # send OMOP csv files to Azure RESTRICTED storage
-OMOP_DESTINATION_PATH="AI-READI/pooled-data/OMOP/RESTRICTED"
-azcopy copy "/home/azureuser/data/output/*.csv" "${STAGE1_URI}/${OMOP_DESTINATION_PATH}${STAGE1_SAS}"
+# OMOP_DESTINATION_PATH="AI-READI/pooled-data/OMOP/RESTRICTED"
+# azcopy copy "/home/azureuser/data/output/*.csv" "${STAGE1_URI}/${OMOP_DESTINATION_PATH}${STAGE1_SAS}"
 
 # send OMOP csv files to Azure PUBLIC storage
 # we are skipping the drug_exposure table here

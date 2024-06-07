@@ -36,8 +36,7 @@ MOCA_SOURCE_PATH="AI-READI/UAB/MoCA"
 rm -f /home/azureuser/data/moca/*.csv
 rm -f /home/azureuser/data/moca/MoCA/*.csv
 azcopy copy "${RAW_URI}/${MOCA_SOURCE_PATH}${RAW_SAS}" '/home/azureuser/data/moca/' --recursive --include-pattern '*.csv'
-python3 /home/azureuser/omop_etl_labs_and_moca/select_and_copy_most_recent_file.py -src "/home/azureuser/data/moca/MoCA/*.csv" -dest /home/azureuser/data/moca/MOCA-latest.csv
-
-
+python3 /home/azureuser/omop_etl_labs_and_moca/select_and_copy_most_recent_file.py -src "/home/azureuser/data/moca/MoCA/MOCA-????-??-??.csv" -dest /home/azureuser/data/moca/MOCA-latest.csv
+python3 /home/azureuser/omop_etl_labs_and_moca/select_and_copy_most_recent_file.py -src "/home/azureuser/data/moca/MoCA/MOCA-????-??-??-Paper.csv" -dest /home/azureuser/data/moca/MOCA-latest-Paper.csv
 
 

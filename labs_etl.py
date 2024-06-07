@@ -350,6 +350,23 @@ def process_lab_sheet(df_lab_sheet, utilities):
     return labs_measurements, bad_record_count
 
 
+
+def safe_participant_id_converstion(s):
+    if pd.isna(s):
+        # zero is an illegal particpant id and will never match
+        # a record in the PERSON table
+        return 0
+    else:
+        s = str(s) # ensure we are dealing with a string
+        if s.isnumeric():
+            return int(s) # string is an integer
+        elif s.replace('.', '').isnumeric():
+            return int(float(s)) # string is a float, convert to an integer string
+        else:
+            # non-numeric string, set it illegal particpant id
+            return 0
+
+
 def process_lab_source_file(filename, utilities):
     LABS_SHEET_NAMES_AND_SKIP_ROWS = {
         'EDTA Plasma' : [0, 1], 
@@ -364,6 +381,15 @@ def process_lab_source_file(filename, utilities):
     for sn, sr in LABS_SHEET_NAMES_AND_SKIP_ROWS.items():
         sys.stderr.write(f"\t Processing Sheet = '{sn}'.\n")
         df_lab_sheet = pd.read_excel(filename, sheet_name=sn, skiprows=sr)
+
+        # remove any blank rows, these are found by having an NA value in particpant ID...
+        df_lab_sheet = df_lab_sheet[lambda df: df['Participant ID'].notna()].reset_index(drop=True).copy()
+
+        # need to clean up Participant ID so that it is always integer
+        # since sometimes Excel thinks that it is text that looks like a float
+        df_lab_sheet['Participant ID'] = df_lab_sheet['Participant ID'].map(safe_participant_id_converstion)
+        df_lab_sheet['Participant ID']  =  df_lab_sheet['Participant ID'].astype(int)
+
         ms, bad = process_lab_sheet(df_lab_sheet, utilities)
         labs_measurements.extend(ms)
         bad_record_count += bad

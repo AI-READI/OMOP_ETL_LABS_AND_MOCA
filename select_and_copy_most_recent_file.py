@@ -7,10 +7,13 @@ import glob
 import shutil
 import re
 import datetime
+import os.path
 
 PATTERNS = [
-	r'.*-(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})\Z',
-	r'.*-(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})\Z',
+	#r'.*-(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})\Z',
+	#r'.*-(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})\Z',
+	r'.*-(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})',
+	r'.*-(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})',
 ]
 
 def convert_to_datetime(year_str, month_str, day_str):
@@ -19,10 +22,10 @@ def convert_to_datetime(year_str, month_str, day_str):
 def extract_datetime_from_filename(filename):
 	# look one of these patterns:
 	# stuff-YYYYMMDD.ext
-	# stuff-YYY-MM-DD.ext
+	# stuff-YYYY-MM-DD.ext
 
-	# remove the extenstion
-	base = filename.split('.')[0]
+	# remove the extension
+	base = os.path.split(filename)[1].split('.')[0]
 
 	# loop over the patterns, use the first that matches...
 	for pattern in PATTERNS:
