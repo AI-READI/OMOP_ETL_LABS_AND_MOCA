@@ -42,10 +42,11 @@ from moca_etl_parameters import MOCA_OMOP_WRITE_TO_DATABASE
 
 #define constants for data collection types
 # these extension values are defined by the AIREADI Standards Team
-MOCA_AUTOMATED_observation_type_concept_id = 999123456
-MOCA_MANUAL_observation_type_concept_id = 999123457
-MOCA_AUTOMATED_measurement_type_concept_id = 998123456
-MOCA_MANUAL_measurement_type_concept_id = 998123456
+# SRC_CODE = app_generated | manually_entered_from_paper
+MOCA_AUTOMATED_observation_type_concept_id = None
+MOCA_MANUAL_observation_type_concept_id = None
+MOCA_AUTOMATED_measurement_type_concept_id = None
+MOCA_MANUAL_measurement_type_concept_id = None
 
 
 def display_moca_configuration_parameters():
@@ -75,8 +76,25 @@ def convert_duration_string_to_seconds(s):
     return 60*int(mo.group(1)) + int(mo.group(2))
 
 def read_moca_mappings():
+    # set constants
+    global MOCA_AUTOMATED_observation_type_concept_id
+    global MOCA_MANUAL_observation_type_concept_id
+    global MOCA_AUTOMATED_measurement_type_concept_id
+    global MOCA_MANUAL_measurement_type_concept_id
+
     # read the mapping file
     df_mapping = pd.read_csv(STANDARDS_MAPPING_CSV_PATH)    
+
+    # read and set the automated vs. manual concept ids constants
+    # app_generated
+    # manually_entered_from_paper
+    MOCA_AUTOMATED_observation_type_concept_id = \
+        int(df_mapping[lambda df: df['SRC_CODE'] == 'app_generated'].iloc[0]['TARGET_CONCEPT_ID'])
+    MOCA_AUTOMATED_measurement_type_concept_id = MOCA_AUTOMATED_observation_type_concept_id
+
+    MOCA_MANUAL_observation_type_concept_id = \
+        int(df_mapping[lambda df: df['SRC_CODE'] == 'manually_entered_from_paper'].iloc[0]['TARGET_CONCEPT_ID'])
+    MOCA_MANUAL_measurement_type_concept_id = MOCA_MANUAL_observation_type_concept_id
 
     # load mappings files that are completed and ready for mapping...
     MAPPING_COLUMNS_REQUIRED = [
@@ -117,6 +135,7 @@ def load_raw_moca_data():
     df_moca_data = None
     for filepattern in MOCA_SOURCE_DATA_GLOB.split(';'):
         for filename in glob.glob(filepattern):
+            sys.stderr.write(f"Reading MoCA data file: {filename}\n")
             df_temp = pd.read_csv(filename)
             # add source simple filename to the moca data table
             df_temp['source_filename'] = os.path.split(filename)[1]
@@ -251,7 +270,7 @@ def create_single_observation_record(moca_record, mapping_row):
     o.observation_event_id = 0
     o.obs_event_field_concept_id = 0
     
-    # compute measurement_type_concept_id
+    # compute observation_type_concept_id
     if moca_record.source_filename.lower().find('paper') >= 0:
         o.observation_type_concept_id = MOCA_MANUAL_observation_type_concept_id
     else:
@@ -303,9 +322,15 @@ def process_moca_etl():
     engine = create_engine(POSTGRES_CONN_STRING_KEY)
     connection = engine.connect()    
     
-    # read and configure the mappings
+    # read and configure the mappings as well as the constant codes for manual vs. automated values...   
     df_completed_mappings = read_moca_mappings()
-    
+
+    # display the read in defined constant codes for manual vs. automated values...    
+    sys.stderr.write('\n')
+    sys.stderr.write(f'MOCA_AUTOMATED_observation_type_concept_id and MOCA_AUTOMATED_measurement_type_concept_id set to {MOCA_AUTOMATED_observation_type_concept_id},{MOCA_AUTOMATED_measurement_type_concept_id} from mapping file.\n')
+    sys.stderr.write(f'MOCA_MANUAL_observation_type_concept_id and MOCA_MANUAL_measurement_type_concept_id set to {MOCA_MANUAL_observation_type_concept_id},{MOCA_MANUAL_measurement_type_concept_id} from mapping file.\n')
+    sys.stderr.write('\n')
+
     # read the raw moca data
     df_moca_data = load_raw_moca_data()
     sys.stderr.write(f"Read {df_moca_data.shape[0]} raw MoCA records:\n")

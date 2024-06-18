@@ -20,12 +20,16 @@ LABS_NT_PROBNP_RANGES_SHEETNAME = 'NT-proBNP Ranges'
 LABS_ALKALINE_PHOSPHATASE_RANGES_SHEETNAME = 'Alkaline Phosphatase Ranges'
 
 # glob wildcard path to the raw MOCA source data files
-LABS_SOURCE_DATA_GLOB = './LABS/EXAMPLE_DATA/LAB-NORC-latest.xlsx'
+LABS_SOURCE_DATA_GLOB = './LABS/EXAMPLE_DATA/LAB-NORC-????????.xlsx'
+
+# control filtering out DUPLICATE records
+LABS_OMOP_FILTER_OUT_DUPLICATE_RECORDS = True
 
 # control writing to the OMOP database, for debugging
 LABS_OMOP_WRITE_TO_DATABASE = True
 
-
+# control displaying records when not writing to OMOP database, for debugging
+LABS_OMOP_DISPLAY_RECORDS_WHEN_NOT_WRITING_TO_DB = False
 
 
 

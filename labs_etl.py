@@ -34,6 +34,9 @@ from labs_etl_parameters import POSTGRES_LABS_WRITE_SCHEMA_NAME
 from labs_etl_parameters import POSTGRES_LABS_WRITE_MEASUREMENT_TABLE_NAME
 
 from labs_etl_parameters import LABS_OMOP_WRITE_TO_DATABASE
+from labs_etl_parameters import LABS_OMOP_DISPLAY_RECORDS_WHEN_NOT_WRITING_TO_DB
+
+from labs_etl_parameters import LABS_OMOP_FILTER_OUT_DUPLICATE_RECORDS
 
 # omop etl utilities
 from omop_etl_utils import create_empty_measurement_record
@@ -404,6 +407,26 @@ def display_labs_configuration_parameters():
             sys.stderr.write(f"\t{name} = '{value}'\n")
 
 
+def hash_measurement_record(m):
+    hstring = f'{m.person_id}_{m.measurement_datetime}_{m.measurement_source_value}_{m.value_source_value}'
+    return hash(hstring)
+
+
+def filter_duplicate_measurement_records(labs_measurements):
+    # filter duplicate records in one pass by hashing essential distinctive record
+    # source data fields and only keeping the first record having each unique hash....
+    hash_set = set()
+    filtered_labs_measurements = []
+    for m in labs_measurements:
+        h = hash_measurement_record(m)
+        if h in hash_set:
+            sys.stderr.write(f"Removing duplicate record for person_id:{m['person_id']}, measurement_source_value:{m['measurement_source_value']}\n")
+        else:
+            hash_set.add(h)
+            filtered_labs_measurements.append(m)
+    return filtered_labs_measurements
+
+
 def process_labs_etl():
     # begin timing
     sys.stderr.write(f"Starting process_labs_etl().\n")
@@ -428,11 +451,18 @@ def process_labs_etl():
     bad_record_count = 0
     # loop over lab source data files
     for filename in glob.glob(LABS_SOURCE_DATA_GLOB):
-        sys.stderr.write(f"Processing file '{filename}'.\n")
+        sys.stderr.write(f"Processing lab data file: {filename}\n")
         ms, bad = process_lab_source_file(filename, utilities)
         labs_measurements.extend(ms)
         bad_record_count += bad
     sys.stderr.write(f"Found {len(labs_measurements)} valid records and rejected {bad_record_count} invalid records.\n")
+
+    if LABS_OMOP_FILTER_OUT_DUPLICATE_RECORDS:
+        sys.stderr.write("Filtering out duplicate records...\n")
+        sys.stderr.write(f"Starting with {len(labs_measurements)} Measurement records.\n")
+        labs_measurements = filter_duplicate_measurement_records(labs_measurements)
+        sys.stderr.write(f"Now have {len(labs_measurements)} unique Measurement records.\n")
+        sys.stderr.write("OK, filtering complete.\n\n")
 
     if LABS_OMOP_WRITE_TO_DATABASE:
         # write measurement records to OMOP database as append...
@@ -445,9 +475,10 @@ def process_labs_etl():
     else:
         sys.stderr.write("*** Skipping writing records to database.***\n")
         sys.stderr.write("Set configuration option LABS_OMOP_WRITE_TO_DATABASE to True to enable write.\n")
-        sys.stderr.write("*** Printing records to stdout for debugging.***\n")
-        for index, row in enumerate(labs_measurements):
-            sys.stdout.write(f"{index} {str(row)}\n")
+        if LABS_OMOP_DISPLAY_RECORDS_WHEN_NOT_WRITING_TO_DB:
+            sys.stderr.write("*** Printing records to stdout for debugging.***\n")
+            for index, row in enumerate(labs_measurements):
+                sys.stdout.write(f"{index} {str(row)}\n")
 
     # close database connection
     connection.close()
