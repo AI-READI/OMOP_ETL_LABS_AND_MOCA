@@ -9,8 +9,8 @@ POSTGRES_MOCA_WRITE_SCHEMA_NAME = 'aireadi_omop'
 POSTGRES_MOCA_WRITE_MEASUREMENT_TABLE_NAME='measurement'
 POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME='observation'
 
-#path to the standard mapping csv file
-STANDARDS_MAPPING_CSV_PATH='./MOCA/STANDARDS_MAPPINGS/0111_2024_06_11_MOCA_Data_Dictionary_Mappings_amc2.csv'
+# path to the standard mapping csv file
+STANDARDS_MAPPING_CSV_PATH='./MOCA/STANDARDS_MAPPINGS/0112_2024_06_20_MOCA_Data_Dictionary_Mappings.csv'
 
 # glob wildcard path to the raw MOCA source data files
 MOCA_SOURCE_DATA_GLOB = './MOCA/EXAMPLE_DATA/MOCA-latest.csv;./MOCA/EXAMPLE_DATA/MOCA-latest-Paper.csv'

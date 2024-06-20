@@ -12,13 +12,14 @@ POSTGRES_MOCA_WRITE_MEASUREMENT_TABLE_NAME='measurement'
 POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME='observation'
 
 # path to the standard mapping csv file
-STANDARDS_MAPPING_CSV_PATH='/home/azureuser/omop_etl_labs_and_moca/MOCA/STANDARDS_MAPPINGS/0111_2024_06_11_MOCA_Data_Dictionary_Mappings_amc2.csv'
+STANDARDS_MAPPING_CSV_PATH='/home/azureuser/omop_etl_labs_and_moca/MOCA/STANDARDS_MAPPINGS/0112_2024_06_20_MOCA_Data_Dictionary_Mappings.csv'
 
 # glob wildcard path to the raw MOCA source data files
 MOCA_SOURCE_DATA_GLOB = '/home/azureuser/data/moca/MOCA-latest.csv;/home/azureuser/data/moca/MOCA-latest-Paper.csv'
 
 # control writing to the OMOP database, for debugging
-MOCA_OMOP_WRITE_TO_DATABASE = False
+MOCA_OMOP_WRITE_TO_DATABASE = True 
+
 
 
 

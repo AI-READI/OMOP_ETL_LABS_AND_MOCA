@@ -26,7 +26,7 @@ LABS_SOURCE_DATA_GLOB = './LABS/EXAMPLE_DATA/LAB-NORC-????????.xlsx'
 LABS_OMOP_FILTER_OUT_DUPLICATE_RECORDS = True
 
 # control writing to the OMOP database, for debugging
-LABS_OMOP_WRITE_TO_DATABASE = False
+LABS_OMOP_WRITE_TO_DATABASE = True
 
 # control displaying records when not writing to OMOP database, for debugging
 LABS_OMOP_DISPLAY_RECORDS_WHEN_NOT_WRITING_TO_DB = False
