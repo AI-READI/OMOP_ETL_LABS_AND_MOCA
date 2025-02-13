@@ -14,7 +14,7 @@ POSTGRES_LABS_READ_VISIT_OCCURENCE_TABLE_NAME='aireadi_omop.visit_occurrence'
 POSTGRES_LABS_READ_VISIT_OCCURENCE_CONCEPT_ID = 32036
 
 # path to the standard mapping csv file
-LABS_STANDARDS_MAPPING_CSV_PATH='/home/azureuser/omop_etl_labs_and_moca/LABS/STANDARDS_MAPPINGS/0100_2023-11-29_AIREADi_LABS_Data_Dictionary_Mappings.csv'
+LABS_STANDARDS_MAPPING_CSV_PATH='/home/azureuser/omop_etl_labs_and_moca/LABS/STANDARDS_MAPPINGS/AI-READI LABS Data Dictionary and Mappings.csv'
 
 # path to the data dictionaru xlsx file that contains range mappings
 LABS_DATA_DICTIONARY_XLSX_PATH = '/home/azureuser/omop_etl_labs_and_moca/LABS/DATA_DICTIONARY/DRAFT AIREADI LABS Data Dictionary v0.1 DM3 2023_11_02.xlsx'
