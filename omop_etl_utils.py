@@ -87,8 +87,9 @@ def create_empty_observation_record():
 #
 # MOCA data formats seem to vary
 #
-MOCA_STRING_DATE_FORMATS = ['%d-%m-%Y', '%m/%d/%Y', '%m/%d/%y']
-
+# SRC Change 10.22.24: made all dates d/m/y and added flexibiilty fo years
+MOCA_STRING_DATE_FORMATS = ['%m-%d-%Y', '%m/%d/%Y','%m-%d-%y','%m/%d/%y','%Y-%m-%d', '%Y/%m/%d','%y-%m-%d','%y/%m/%d']
+ 
 def moca_string_to_datetime(s):
     for df in MOCA_STRING_DATE_FORMATS:
         try:
