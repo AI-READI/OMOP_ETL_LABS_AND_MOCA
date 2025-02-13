@@ -39,6 +39,8 @@ from moca_etl_parameters import POSTGRES_MOCA_WRITE_OBSERVATION_TABLE_NAME
 
 from moca_etl_parameters import MOCA_OMOP_WRITE_TO_DATABASE
 
+##SRC Added 10-30-24 This is part of getting the phys assess date from redcap
+from moca_etl_parameters import redcap_report
 
 #define constants for data collection types
 # these extension values are defined by the AIREADI Standards Team
@@ -48,6 +50,12 @@ MOCA_MANUAL_observation_type_concept_id = None
 MOCA_AUTOMATED_measurement_type_concept_id = None
 MOCA_MANUAL_measurement_type_concept_id = None
 
+
+###SRC Added 10-30-24, read the redcap data to use the physical assessment date for MOCA
+def initialize_redcap(filename):
+    redcap=pd.read_csv(filename)
+    rcvars=redcap.dtypes
+    return redcap
 
 def display_moca_configuration_parameters():
     sys.stderr.write("Configuration Parameters:\n")
@@ -155,7 +163,7 @@ def load_raw_moca_data():
     return df_moca_data    
 
 
-def create_single_measurement_record(moca_record, mapping_row):
+def create_single_measurement_record(moca_record, mapping_row,redcap):
     # first check to ensure that the column value is not NaN
     if pd.isna(moca_record[mapping_row['SRC_CODE']]):
         # don't create a measurement record for this value
@@ -192,9 +200,25 @@ def create_single_measurement_record(moca_record, mapping_row):
         m.measurement_type_concept_id = MOCA_AUTOMATED_measurement_type_concept_id
 
     # set date and time fields...
-    m.measurement_date = moca_string_to_date(moca_record['test_upload_date'])
-    m.measurement_datetime = moca_string_to_datetime(moca_record['test_upload_date'])
-    m.measurement_time = moca_string_to_time(moca_record['test_upload_date'])          
+    #print(moca_record['test_upload_date'],moca_record['Institute File number'])
+    
+    ##SRC Added 10-30-24 get the physical assessment date from redcap
+    #id=moca_record['Institute File number'])
+    #print(moca_record['Institute File number'],redcap[(redcap["studyid"]==id)].shape[0])
+    if redcap[(redcap["studyid"]==moca_record['Institute File number'])].shape[0] !=0:
+       physical_assess_date=redcap.loc[(redcap["studyid"]==moca_record['Institute File number'])].pacmpdat.item()
+    else:
+        physical_assess_date='01/01/2001'
+    
+    #m.measurement_date = moca_string_to_date(moca_record['test_upload_date'])
+    #m.measurement_datetime = moca_string_to_datetime(moca_record['test_upload_date'])
+    #m.measurement_time = moca_string_to_time(moca_record['test_upload_date'])        
+    
+    ##SRC Added 10-30-24 Use the pa date
+    #print(physical_assess_date)
+    m.measurement_date = moca_string_to_date(physical_assess_date)
+    m.measurement_datetime = moca_string_to_datetime(physical_assess_date)
+    m.measurement_time = moca_string_to_time(physical_assess_date)      
 
     # DEBUGGING
     #print() 
@@ -230,17 +254,17 @@ def create_single_measurement_record(moca_record, mapping_row):
     return m
 
 
-def create_measurement_records(moca_record, df_mappings):
+def create_measurement_records(moca_record, df_mappings,redcap):
     moca_measurements = []
     for index, r in df_mappings.iterrows():
         if r.TARGET_DOMAIN_ID == 'Measurement':
-            m = create_single_measurement_record(moca_record, r)
+            m = create_single_measurement_record(moca_record, r,redcap)
             if m:
                 moca_measurements.append(m)
     return moca_measurements
 
 
-def create_single_observation_record(moca_record, mapping_row):
+def create_single_observation_record(moca_record, mapping_row,redcap):
     # first check to ensure that the column value is not NaN
     if pd.isna(moca_record[mapping_row['SRC_CODE']]):
         # don't create an observation record for this value
@@ -277,8 +301,19 @@ def create_single_observation_record(moca_record, mapping_row):
         o.observation_type_concept_id = MOCA_AUTOMATED_observation_type_concept_id
 
     # set date and time fields...
-    o.observation_date = moca_string_to_date(moca_record['test_upload_date'])
-    o.observation_datetime = moca_string_to_datetime(moca_record['test_upload_date'])
+    
+    ##SRC Added 10-30-24 get the physical assessment date from redcap
+    if redcap[(redcap["studyid"]==moca_record['Institute File number'])].shape[0] !=0:
+       physical_assess_date=redcap.loc[(redcap["studyid"]==moca_record['Institute File number'])].pacmpdat.item()
+    else:
+        physical_assess_date='01/01/2001'
+    
+    #o.observation_date = moca_string_to_date(moca_record['test_upload_date'])
+    #o.observation_datetime = moca_string_to_datetime(moca_record['test_upload_date'])
+    
+    ##SRC Added 10-30-24 Use the pa date
+    o.observation_date = moca_string_to_date(physical_assess_date)
+    o.observation_datetime = moca_string_to_datetime(physical_assess_date)
     
     # set computed value fields...
     raw_value_text = moca_record[mapping_row['SRC_CODE']]
@@ -302,11 +337,11 @@ def create_single_observation_record(moca_record, mapping_row):
     return o
         
 
-def create_observation_records(moca_record, df_mappings):
+def create_observation_records(moca_record, df_mappings,redcap):
     moca_observations = []
     for index, r in df_mappings.iterrows():
         if r.TARGET_DOMAIN_ID == 'Observation':
-            o = create_single_observation_record(moca_record, r)
+            o = create_single_observation_record(moca_record, r,redcap)
             if o:
                 moca_observations.append(o)
     return moca_observations
@@ -331,6 +366,11 @@ def process_moca_etl():
     sys.stderr.write(f'MOCA_MANUAL_observation_type_concept_id and MOCA_MANUAL_measurement_type_concept_id set to {MOCA_MANUAL_observation_type_concept_id},{MOCA_MANUAL_measurement_type_concept_id} from mapping file.\n')
     sys.stderr.write('\n')
 
+    ###SRC Added 10.30.24 Read in the redcap report to get the phys assess date
+    redcap=initialize_redcap(redcap_report)
+    redcap['studyid']=redcap['studyid'].astype(str)
+    #print(redcap['studyid'].dtypes)
+
     # read the raw moca data
     df_moca_data = load_raw_moca_data()
     sys.stderr.write(f"Read {df_moca_data.shape[0]} raw MoCA records:\n")
@@ -341,11 +381,15 @@ def process_moca_etl():
     # these records do not have the measurement_id and observation_id filled in unti later!
     moca_measurements = []
     moca_observations = []
+    ##SRC
+    #df_moca_data['Institute File number'].astype(int)
+    #print(df_moca_data.dtypes)
     for index, r in df_moca_data.iterrows():
-        mms = create_measurement_records(r, df_completed_mappings)
+        #print(redcap[(redcap["studyid"]==r['Institute File number'])] )
+        mms = create_measurement_records(r, df_completed_mappings,redcap)
         moca_measurements.extend(mms)
 
-        mos = create_observation_records(r, df_completed_mappings)
+        mos = create_observation_records(r, df_completed_mappings,redcap)
         moca_observations.extend(mos)    
 
     sys.stderr.write(f"Created {len(moca_measurements)} new MEASUREMENT records from MoCA data.\n")
