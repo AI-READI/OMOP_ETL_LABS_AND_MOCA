@@ -67,8 +67,8 @@ def normalize_lab_test_name(s):
 def create_standards_completed_lab_mappings():
     MAPPING_COLUMNS_REQUIRED = [
         'Name',
-        'Data Type',
-        'Reference Interval',
+        'Data_Type',
+        'Reference_Interval',
         'Units',
         'TARGET_CONCEPT_ID', 
         'TARGET_CONCEPT_NAME', 
@@ -82,7 +82,7 @@ def create_standards_completed_lab_mappings():
     
     # load mappings files that are completed and ready for mapping...
     df_labs_mapping = pd.read_csv(LABS_STANDARDS_MAPPING_CSV_PATH)
-    df_completed_labs_mappings = df_labs_mapping[lambda df: (df['Map to OMOP?'] == 'Yes') & \
+    df_completed_labs_mappings = df_labs_mapping[lambda df: (df['Map_to_OMOP'] == 'Yes') & \
         df.TARGET_CONCEPT_ID.notnull()][MAPPING_COLUMNS_REQUIRED]
 
     # correct data types...
@@ -192,6 +192,7 @@ def create_measurement(data_row, data_column_name, mapping_row, utilities):
     # process dates and times
     m.measurement_date = labs_string_to_date(data_row['Date of Collection'])
     m.measurement_datetime = labs_string_to_datetime(data_row['Date of Collection'])
+    #print(data_row['Date of Collection'], data_row['Participant ID'])
     m.measurement_time = labs_string_to_time(data_row['Date of Collection'])
     
     # process unit values
@@ -203,21 +204,23 @@ def create_measurement(data_row, data_column_name, mapping_row, utilities):
     m.meas_event_field_concept_id = 0
     
     # process value    
+    # Added by SRC 10/7/24: added a check for >, also check for 'Invalid' in the number field
     value = str(data_row[data_column_name]) # values can be a mix of floats and str
     m.value_source_value = value
-    if value[0] == '<':
+    if value[0] == '<' or value[0] == '>':
         m.value_as_number = float(value[1:])
         m.operator_concept_id = LESS_THAN_OMOP_CONCEPT_ID
-    else:
-        m.value_as_number = float(value)
-        m.operator_concept_id = EQUALS_OMOP_CONCEPT_ID
+    elif value != 'Invalid':
+         #print(m.person_id,value)
+         m.value_as_number = float(value)
+         m.operator_concept_id = EQUALS_OMOP_CONCEPT_ID
         
     # process normal ranges
     # this is a little tricky because sometimes the normal range is in the 
     # mapping and sometimes we need to use tables loaded from elsewhere
     # also note that we don't know the sex of the participant, so 
     # assume always Female, since we have to pick something
-    if pd.isna(mapping_row['Reference Interval']):
+    if pd.isna(mapping_row['Reference_Interval']):
         # no reference range is given
         m.range_low = 0.0
         m.range_high = 0.0
@@ -242,7 +245,7 @@ def create_measurement(data_row, data_column_name, mapping_row, utilities):
     elif mapping_row.Name == 'Troponin-T':
         # Female: <11; Male <16
         # handle special case for this lab, we need to take the larger of the Female and Male ranges
-        fpart, mpart = mapping_row['Reference Interval'].split(';')
+        fpart, mpart = mapping_row['Reference_Interval'].split(';')
         fpart = fpart.split(' ')[-1]
         mpart = mpart.split(' ')[-1]
         ignore, fvalue = extract_range_from_text(fpart)
@@ -263,7 +266,7 @@ def create_measurement(data_row, data_column_name, mapping_row, utilities):
     elif mapping_row.Name == 'Creatinine':
         # Female: 0.38-1.02, Male: 0.51-1.18
         # handle special case for this lab, we need to take the larger of the Female and Male ranges
-        fpart, mpart = mapping_row['Reference Interval'].split(',')
+        fpart, mpart = mapping_row['Reference_Interval'].split(',')
         fpart = fpart.split(' ')[-1]
         mpart = mpart.split(' ')[-1]
         reference_interval_F = extract_range_from_text(fpart)
@@ -273,8 +276,8 @@ def create_measurement(data_row, data_column_name, mapping_row, utilities):
         else:
             # treat not having a reference interval as a fatal error for now
             return None
-    elif ',' in mapping_row['Reference Interval']:
-        parts = mapping_row['Reference Interval'].split(',')
+    elif ',' in mapping_row['Reference_Interval']:
+        parts = mapping_row['Reference_Interval'].split(',')
         if 'Female:' in parts[0]:
             t = parts[0].split(':')[-1].strip()
             m.range_low, m.range_high = extract_range_from_text(t)
@@ -290,13 +293,13 @@ def create_measurement(data_row, data_column_name, mapping_row, utilities):
             ignore, high = extract_range_from_text(parts[0])
             low, ignore = extract_range_from_text(parts[1])        
             m.range_low, m.range_high = low, high
-    elif mapping_row['Reference Interval'][0] == '<':
-        m.range_low, m.range_high = extract_range_from_text(mapping_row['Reference Interval'])
-    elif mapping_row['Reference Interval'][0] == '>':
-        m.range_low, m.range_high = extract_range_from_text(mapping_row['Reference Interval'])
-    elif '-' in mapping_row['Reference Interval']:
-        m.range_low, m.range_high = extract_range_from_text(mapping_row['Reference Interval'])        
-    elif len(mapping_row['Reference Interval']) == 0:
+    elif mapping_row['Reference_Interval'][0] == '<':
+        m.range_low, m.range_high = extract_range_from_text(mapping_row['Reference_Interval'])
+    elif mapping_row['Reference_Interval'][0] == '>':
+        m.range_low, m.range_high = extract_range_from_text(mapping_row['Reference_Interval'])
+    elif '-' in mapping_row['Reference_Interval']:
+        m.range_low, m.range_high = extract_range_from_text(mapping_row['Reference_Interval'])        
+    elif len(mapping_row['Reference_Interval']) == 0:
         # no reference range is given
         m.range_low = 0.0
         m.range_high = 0.0
@@ -343,13 +346,16 @@ def process_lab_sheet_row(r, utilities):
     return labs_measurements, bad_record_count
 
 
+## Added by SRC 10/22/24: Do not process a row if the date of collection is missing or 'not collected'
 def process_lab_sheet(df_lab_sheet, utilities):
     labs_measurements = []
     bad_record_count = 0
     for index, r in df_lab_sheet.iterrows():
-        ms, bad = process_lab_sheet_row(r, utilities)
-        labs_measurements.extend(ms)
-        bad_record_count += bad
+        if pd.notna(r['Date of Collection']) and r['Date of Collection'] != 'not collected ' and r['Date of Collection'] != 'not collected':
+           #print(r['Participant ID'],r['Date of Collection']) 
+           ms, bad = process_lab_sheet_row(r, utilities)
+           labs_measurements.extend(ms)
+           bad_record_count += bad
     return labs_measurements, bad_record_count
 
 
